@@ -10,20 +10,16 @@ md_text = md_path.read_text()
 
 # ── parse markdown into structured data ──
 sections = {}
-# sections are: 新药研发, 监管资讯, 科研进展, AI发展, 商业布局
+# sections are: 新药研发, 监管资讯, 科研进展
 cat_map = {
     '新药研发': 'drug',
     '监管资讯': 'reg',
     '科研进展': 'research',
-    'AI 发展': 'ai',
-    '商业布局': 'biz',
 }
 cat_emoji = {
     '新药研发': '🆕',
     '监管资讯': '📋',
     '科研进展': '🔬',
-    'AI 发展': '🤖',
-    '商业布局': '💰',
 }
 counts = {}
 
@@ -164,15 +160,11 @@ def section_html(cat_name, cat_key, items_list):
         'drug': '新药研发',
         'reg': '监管资讯',
         'research': '科研进展',
-        'ai': 'AI 发展',
-        'biz': '商业布局',
     }
     title_map = {
         'drug': '🆕 新药研发 — Drug R&D',
         'reg': '📋 监管资讯 — Regulatory',
         'research': '🔬 科研进展 — Research',
-        'ai': '🤖 AI 发展 — AI in Pharma',
-        'biz': '💰 商业布局 — Business',
     }
     count = len(items_list)
     items_html = '\n'.join(news_item_html(i, cat_key) for i in items_list)
@@ -196,7 +188,7 @@ def highlight_html(h):
   </div>
 </div>'''
 
-sections_order = ['新药研发', '监管资讯', '科研进展', 'AI 发展', '商业布局']
+sections_order = ['新药研发', '监管资讯', '科研进展']
 all_sections_html = '\n'.join(
     section_html(c, cat_map[c], sections.get(c, []))
     for c in sections_order
@@ -339,7 +331,7 @@ html = f'''<!DOCTYPE html>
     <div class="hero">
       <div class="week">🦞 第33周 · 8月3日 — 8月9日</div>
       <h1>医药研发周报<br>Pharma R&D Weekly Report</h1>
-      <p class="sub">新药研发 · 监管资讯 · 科研进展 · AI 发展 · 商业布局 — 一站式掌握全球医药动态</p>
+      <p class="sub">新药研发 · 监管资讯 · 科研进展 — 一站式掌握全球医药动态</p>
     </div>
 
     <div class="category-cards" id="catCards">
@@ -367,18 +359,6 @@ html = f'''<!DOCTYPE html>
         <div class="cat-label">科研进展</div>
         <div class="cat-sub">论文 · 学术突破</div>
       </div>
-      <div class="cat-card ai" data-cat="ai">
-        <span class="cat-icon">🤖</span>
-        <div class="cat-count">{counts.get('AI 发展', 0)}</div>
-        <div class="cat-label">AI 发展</div>
-        <div class="cat-sub">AI 制药 · 数字医疗</div>
-      </div>
-      <div class="cat-card biz" data-cat="biz">
-        <span class="cat-icon">💰</span>
-        <div class="cat-count">{counts.get('商业布局', 0)}</div>
-        <div class="cat-label">商业布局</div>
-        <div class="cat-sub">并购 · 融资 · 市场</div>
-      </div>
     </div>
 
     <div class="highlights-section">
@@ -398,8 +378,6 @@ html = f'''<!DOCTYPE html>
       <button class="filter-btn" data-cat="drug">🆕 新药研发</button>
       <button class="filter-btn" data-cat="reg">📋 监管资讯</button>
       <button class="filter-btn" data-cat="research">🔬 科研进展</button>
-      <button class="filter-btn" data-cat="ai">🤖 AI 发展</button>
-      <button class="filter-btn" data-cat="biz">💰 商业布局</button>
     </div>
 
 {all_sections_html}
@@ -449,21 +427,38 @@ print(f"HTML written: {html_path} ({len(html)} bytes)")
 # ── Update archives.json ──
 repo_root = Path('/Users/wangyafei/projects/pharma-weekly')
 archives_path = repo_root / 'archives.json'
+
+# 从 markdown 头部提取报告周期与生成时间
+report_date = md_path.stem  # e.g. 08-10
+range_match = re.search(r'报告周期\*\*[：:]\s*(.+?)\s*(?:\(|（)', md_text)
+range_str = range_match.group(1).strip() if range_match else report_date
+label_match = re.search(r'[（(]第(\d+)周[）)]', md_text)
+label_str = f"第{label_match.group(1)}周" if label_match else report_date
+
+year = md_path.parent.parent.name  # e.g. 2026
+report_path = f"reports/{year}/{report_date}/"
+
+summary = f"本周共收录 {total} 条资讯：新药研发 {counts.get('新药研发',0)} 条，监管资讯 {counts.get('监管资讯',0)} 条，科研进展 {counts.get('科研进展',0)} 条"
+new_entry = {
+    "date": f"{year}-{report_date.replace('-', '-')}",
+    "label": label_str,
+    "range": range_str,
+    "path": report_path,
+    "summary": summary,
+}
+
 archives = json.loads(archives_path.read_text())
-archives.append({
-    "date": "2026-08-10",
-    "label": "第33周",
-    "range": "2026年8月3日 — 8月9日",
-    "path": "reports/2026/08-10/",
-    "summary": f"本周共收录 {total} 条资讯：新药研发 {counts.get('新药研发',0)} 条（OX2R激动剂中美双批、首个mRNA流感疫苗、恒瑞HER2 ADC新适应症等），监管资讯 {counts.get('监管资讯',0)} 条（EMA 12款推荐、avacopan撤销、ICH E6(R3)实施），科研进展 {counts.get('科研进展',0)} 条（柳叶刀PSMA靶向核素、IgA肾病eGFR恢复），AI 发展 {counts.get('AI 发展',0)} 条（BMS超算、89亿零批准反思、AI诊断入医保），商业布局 {counts.get('商业布局',0)} 条（Curium 80亿并购、AZ-BMS合并传闻、四家同周IPO）"
-})
+# 按 date 去重：已存在则替换，不存在则追加
+archives = [e for e in archives if e.get('date') != new_entry['date']]
+archives.append(new_entry)
+archives.sort(key=lambda x: x.get('date', ''))
 archives_path.write_text(json.dumps(archives, ensure_ascii=False, indent=2))
 print(f"Archives updated: {archives_path}")
 
 # ── Sync to Obsidian ──
-obsidian_dir = Path('/Users/wangyafei/Documents/Myobs/医药研发周报/2026')
+obsidian_dir = Path(f'/Users/wangyafei/Documents/Myobs/医药研发周报/{year}')
 obsidian_dir.mkdir(parents=True, exist_ok=True)
-obsidian_path = obsidian_dir / '08-10.md'
+obsidian_path = obsidian_dir / f'{report_date}.md'
 shutil.copy(md_path, obsidian_path)
 print(f"Synced to Obsidian: {obsidian_path}")
 
